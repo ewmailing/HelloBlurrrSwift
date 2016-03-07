@@ -18,6 +18,14 @@ import Foundation
 */
 
 
+
+
+let PINBUTTON: UInt32 = 25 // Pi2: 22
+var g_pigpioDeviceId: Int32 = -1;
+
+
+
+
 let HAPPY_FACE_SIZE : CInt = 32
 struct HappyFaceData
 {
@@ -181,6 +189,23 @@ func main_loop()
 		
 	} while(the_result > 0)
 	
+
+
+
+#if BLURRR_PLATFORM_RASPBERRY_PI
+	let current_value = gpio_read(g_pigpioDeviceId, PINBUTTON);
+	if(current_value >= 1)
+	{
+		BlurrrTicker_SetSpeed(g_gameClock, 10.0); // 10x speed
+	}
+	else
+	{
+		BlurrrTicker_SetSpeed(g_gameClock, 1.0); // normal speed
+	}
+#endif
+
+
+
 	
 	Render(s_mainRenderer, delta_time: delta_time)
 	
@@ -363,6 +388,21 @@ func BlurrrMain() -> Int32
 	
 	g_gameClock = BlurrrTicker_Create();
 	BlurrrTicker_Start(g_gameClock);
+
+
+
+
+#if BLURRR_PLATFORM_RASPBERRY_PI
+	g_pigpioDeviceId = pigpio_start(nil, nil);
+	
+	if(g_pigpioDeviceId < 0)
+	{
+		print("pigpio initialialization failed. Make sure you started the pigpiod daemon before running this program.");
+	}
+	set_mode(g_pigpioDeviceId, PINBUTTON, UInt32(PI_INPUT));
+#endif
+
+
 	
 	while(!g_appDone)
 	{

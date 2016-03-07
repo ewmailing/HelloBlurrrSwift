@@ -11,4 +11,8 @@
 #include "ChipmunkSwiftBinding.h"
 
 #include "BlurrrCore.h"
+#include "pigpio.h"
+#include "pigpiod_if2.h"
+
+
 
