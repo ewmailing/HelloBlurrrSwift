@@ -59,18 +59,28 @@ let SCREEN_HEIGHT : CInt = 720
 let NUM_HAPPY_FACES = 50
 
 
-func LoadTexture(theRenderer: COpaquePointer)
+func GetResourceDirectoryString() -> String
 {
-	let base_path = SDL_GetBasePath();
+	let base_path = BlurrrPath_CreateResourceDirectoryString();
 	if(nil == base_path)
 	{
-		print("SDL_GetBasePath() returned NULL");
-		return;
+		return ""
 	}
-	//let resource_file_path = String.fromCString(base_path)! + "icon.bmp";
-	//let resource_file_path = String.fromCString(base_path)! + "swift_logo.bmp";
-	let resource_file_path = String.fromCString(base_path)! + "swift_logo.png";
-	SDL_free(base_path);
+	else
+	{
+		let return_path = String.fromCString(base_path);
+		BlurrrCore_Free(base_path);
+		return return_path!;
+	}
+}
+
+func LoadTexture(theRenderer: COpaquePointer)
+{
+	let base_path = GetResourceDirectoryString();
+
+//	let resource_file_path = base_path + "icon.bmp";
+	let resource_file_path = base_path + "swift_logo.png";
+	
 	
 	//	var bmp_surface = SDL_LoadBMP(resource_file_path);
 	//let bmp_surface = SDL_LoadBMP_RW(SDL_RWFromFile(resource_file_path, "rb"), 1);
@@ -322,6 +332,11 @@ let TemplateHelper_HandleAppEvents : @convention(c) (UnsafeMutablePointer<Void>,
 // This function is the official starting point of the Swift program.
 func BlurrrMain() -> Int32
 {
+	print("BlurrrMain");
+
+	// hack for android
+//	s_facesArray = [HappyFaceData]()
+
 	if(SDL_Init(Uint32(SDL_INIT_VIDEO)) < 0)
 	{
 		print("Could not initialize SDL");
@@ -343,7 +358,7 @@ func BlurrrMain() -> Int32
 	
 	SDL_SetEventFilter(TemplateHelper_HandleAppEvents, nil);
 
-	let the_window = SDL_CreateWindow("Blurrr Swift",
+	var the_window = SDL_CreateWindow("Blurrr Swift",
 		CInt(0x1FFF0000), CInt(0x1FFF0000),
 		CInt(SCREEN_WIDTH), CInt(SCREEN_HEIGHT), 
 		Uint32(0)
@@ -355,7 +370,6 @@ func BlurrrMain() -> Int32
 	s_mainRenderer = the_renderer;
 
 	SDL_RenderSetLogicalSize(the_renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
 	
 	LoadTexture(the_renderer);
 	
@@ -363,14 +377,34 @@ func BlurrrMain() -> Int32
 	
 	g_gameClock = BlurrrTicker_Create();
 	BlurrrTicker_Start(g_gameClock);
+
+	g_appDone = false;
+	s_lastFrameTime = 0
 	
 	while(!g_appDone)
 	{
 		main_loop();
 	}
 
+	SDL_SetEventFilter(nil, nil);
+
+
+	SDL_DestroyTexture(s_happyFaceTexture);
+	s_happyFaceTexture = nil;
+
+	SDL_DestroyRenderer(s_mainRenderer);
+	s_mainRenderer = nil;
+
+	SDL_DestroyWindow(the_window);
+	the_window = nil;
+
+	BlurrrTicker_Free(g_gameClock);
+	g_gameClock = nil;
 
 //	ALmixer_Quit();
+
+	TTF_Quit();
+	IMG_Quit();
 	SDL_Quit();
 	
 	return 0;
