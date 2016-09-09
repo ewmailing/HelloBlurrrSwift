@@ -16,9 +16,10 @@ public class BlurrrActivity extends org.libsdl.app.SDLActivity
 	{
 		return new String[]
 		{
-			swiftCore,
-			// swiftBionic,
-			// Foundation,
+			"swiftCore",
+			// "swiftBionic",
+			// "swiftGlibc",
+			// "Foundation",
 			"SDL2",
 			"BlurrrCore",
 			"chipmunk",

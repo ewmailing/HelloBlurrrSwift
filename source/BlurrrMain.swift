@@ -55,10 +55,10 @@ struct HappyFaceData
 var s_facesArray = [HappyFaceData]()
 
 var g_appDone = false;
-var s_happyFaceTexture : COpaquePointer = nil;
-var s_mainRenderer : COpaquePointer = nil;
+var s_happyFaceTexture : OpaquePointer? = nil;
+var s_mainRenderer : OpaquePointer? = nil;
 var s_lastFrameTime : Uint32 = 0
-var g_gameClock : COpaquePointer = nil
+var g_gameClock : OpaquePointer? = nil
 
 let SCREEN_WIDTH : CInt = 1280
 let SCREEN_HEIGHT : CInt = 720
@@ -67,18 +67,28 @@ let SCREEN_HEIGHT : CInt = 720
 let NUM_HAPPY_FACES = 50
 
 
-func LoadTexture(theRenderer: COpaquePointer)
+func GetResourceDirectoryString() -> String
 {
-	let base_path = SDL_GetBasePath();
+	let base_path = BlurrrPath_CreateResourceDirectoryString();
 	if(nil == base_path)
 	{
-		print("SDL_GetBasePath() returned NULL");
-		return;
+		return ""
 	}
-	//let resource_file_path = String.fromCString(base_path)! + "icon.bmp";
-	//let resource_file_path = String.fromCString(base_path)! + "swift_logo.bmp";
-	let resource_file_path = String.fromCString(base_path)! + "swift_logo.png";
-	SDL_free(base_path);
+	else
+	{
+		let return_path = String(cString: base_path!);
+		BlurrrCore_Free(base_path);
+		return return_path;
+	}
+}
+
+func LoadTexture(_ theRenderer: OpaquePointer)
+{
+	let base_path = GetResourceDirectoryString();
+
+//	let resource_file_path = base_path + "icon.bmp";
+	let resource_file_path = base_path + "swift_logo.png";
+	
 	
 	//	var bmp_surface = SDL_LoadBMP(resource_file_path);
 	//let bmp_surface = SDL_LoadBMP_RW(SDL_RWFromFile(resource_file_path, "rb"), 1);
@@ -110,12 +120,12 @@ func LoadTexture(theRenderer: COpaquePointer)
 	
 }
 
-func RandomInt(min:Int32, max:Int32) -> Int32
+func RandomInt(_ min:Int32, max:Int32) -> Int32
 {
 	return BlurrrRandom_GetSint32InRange(min, max);
 }
 
-func RandomFloat(min:Float32, max:Float32) -> Float32
+func RandomFloat(_ min:Float32, max:Float32) -> Float32
 {
 	return BlurrrRandom_GetFloatInRange(min, max);
 }
@@ -123,13 +133,13 @@ func RandomFloat(min:Float32, max:Float32) -> Float32
 func InitializeHappyFaces()
 {
 	s_facesArray.reserveCapacity(NUM_HAPPY_FACES)
-	for(var i = 0; i < NUM_HAPPY_FACES; i++)
+	for i in 0 ..< NUM_HAPPY_FACES
 	{
-		var happy_face : HappyFaceData = HappyFaceData();
+		let happy_face : HappyFaceData = HappyFaceData();
 		s_facesArray.append(happy_face)
 	}
 	
-	for(var i = 0; i < NUM_HAPPY_FACES; i++)
+	for i in 0 ..< NUM_HAPPY_FACES
 	{
 		s_facesArray[i].size = RandomInt(20, max: 120);
 
@@ -207,7 +217,7 @@ func main_loop()
 
 
 	
-	Render(s_mainRenderer, delta_time: delta_time)
+	Render(s_mainRenderer!, delta_time: delta_time)
 	
 	s_lastFrameTime = current_time;
 
@@ -217,7 +227,7 @@ func main_loop()
 
 
 
-func Render(the_renderer:COpaquePointer, delta_time:Uint32)
+func Render(_ the_renderer:OpaquePointer, delta_time:Uint32)
 {
 	let dt = delta_time;
 	var dst_rect : SDL_Rect = SDL_Rect();
@@ -242,7 +252,7 @@ func Render(the_renderer:COpaquePointer, delta_time:Uint32)
 	- update velocity (if boundary is hit)
 	- draw
 	*/
-	for(var i = 0; i < NUM_HAPPY_FACES; i++)
+	for i in 0 ..< NUM_HAPPY_FACES
 	{
 		var happy_face : HappyFaceData = s_facesArray[i]
 	let maxx = Float32(SCREEN_WIDTH - happy_face.size);
@@ -295,12 +305,12 @@ func Render(the_renderer:COpaquePointer, delta_time:Uint32)
 }
 
 
-let TemplateHelper_HandleAppEvents : @convention(c) (UnsafeMutablePointer<Void>, UnsafeMutablePointer<SDL_Event>) -> CInt =
+let TemplateHelper_HandleAppEvents : @convention(c) (UnsafeMutableRawPointer?, UnsafeMutablePointer<SDL_Event>?) -> CInt =
 {
 	(user_data, the_event) -> CInt in
 	
 	//	var event_type = SDL_EXT_EventGetTypeFromPtr(the_event);
-	var event_type:SDL_EventType = SDL_EventType(the_event.memory.type);
+	var event_type:SDL_EventType = SDL_EventType(the_event!.pointee.type);
 	
 	switch(event_type)
 	{
@@ -347,6 +357,11 @@ let TemplateHelper_HandleAppEvents : @convention(c) (UnsafeMutablePointer<Void>,
 // This function is the official starting point of the Swift program.
 func BlurrrMain() -> Int32
 {
+	print("BlurrrMain");
+
+	// hack for android
+//	s_facesArray = [HappyFaceData]()
+
 	if(SDL_Init(Uint32(SDL_INIT_VIDEO)) < 0)
 	{
 		print("Could not initialize SDL");
@@ -368,7 +383,7 @@ func BlurrrMain() -> Int32
 	
 	SDL_SetEventFilter(TemplateHelper_HandleAppEvents, nil);
 
-	let the_window = SDL_CreateWindow("Blurrr Swift",
+	var the_window = SDL_CreateWindow("Blurrr Swift",
 		CInt(0x1FFF0000), CInt(0x1FFF0000),
 		CInt(SCREEN_WIDTH), CInt(SCREEN_HEIGHT), 
 		Uint32(0)
@@ -377,19 +392,20 @@ func BlurrrMain() -> Int32
 	
 	
 	let the_renderer = SDL_CreateRenderer(the_window, -1, Uint32(0x00000004));
+	if(nil == the_renderer)
+	{
+		fatalError("Could not create renderer");
+	}
 	s_mainRenderer = the_renderer;
 
 	SDL_RenderSetLogicalSize(the_renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
 	
-	LoadTexture(the_renderer);
+	LoadTexture(the_renderer!);
 	
 	InitializeHappyFaces();
 	
 	g_gameClock = BlurrrTicker_Create();
 	BlurrrTicker_Start(g_gameClock);
-
-
 
 
 #if BLURRR_PLATFORM_RASPBERRY_PI
@@ -403,14 +419,33 @@ func BlurrrMain() -> Int32
 #endif
 
 
+	g_appDone = false;
+	s_lastFrameTime = 0
 	
 	while(!g_appDone)
 	{
 		main_loop();
 	}
 
+	SDL_SetEventFilter(nil, nil);
+
+
+	SDL_DestroyTexture(s_happyFaceTexture);
+	s_happyFaceTexture = nil;
+
+	SDL_DestroyRenderer(s_mainRenderer);
+	s_mainRenderer = nil;
+
+	SDL_DestroyWindow(the_window);
+	the_window = nil;
+
+	BlurrrTicker_Free(g_gameClock);
+	g_gameClock = nil;
 
 //	ALmixer_Quit();
+
+	TTF_Quit();
+	IMG_Quit();
 	SDL_Quit();
 	
 	return 0;
